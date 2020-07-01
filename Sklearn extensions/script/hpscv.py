@@ -1,13 +1,14 @@
 from hyperopt import tpe, space_eval
 from hyperopt.fmin import fmin
 from numpy.random import RandomState
-import sklearn
+from sklearn.model_selection import cross_val_score
+from sklearn.base import clone, BaseEstimator
+from hyperopt import hp, fmin, tpe, space_eval
 
-
-class HyperoptSearchCV(sklearn.base.BaseEstimator):
+class HyperoptSearchCV(BaseEstimator):
     def __init__(self, estimator, search_space, param_types={},
                  n_iter=25, scoring='accuracy', cv=None,
-                 verbose=1, seed=42, n_jobs=1, grater_is_better=False):
+                 verbose=1, seed=42, n_jobs=1, greater_is_better=False):
         """ Constructor for model to be optimized using hyperopt
 
         Keyword arguments:
@@ -33,7 +34,7 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         self.X_train = None
         self.y_train = None
         self.n_jobs = n_jobs
-        self.grater_is_better = grater_is_better
+        self.greater_is_better = greater_is_better
 
     def __cast_params(self, recv_params):
         # cast the parameters stored in `recv_params` to
@@ -51,13 +52,13 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
     def __objective(self, recv_params):
         casted_params = self.__cast_params(recv_params)
         updated_model = self.estimator.set_params(**casted_params)
-        score = sklearn.model_selection.cross_val_score(updated_model,
-                                                        self.X_train,
-                                                        self.y_train,
-                                                        scoring=self.scoring,
-                                                        cv=self.cv,
-                                                        n_jobs=self.n_jobs).mean()
-        if self.grater_is_better:
+        score = cross_val_score(updated_model,
+        						self.X_train,
+                                self.y_train,
+                                scoring=self.scoring,
+                                cv=self.cv,
+                                n_jobs=self.n_jobs).mean()
+        if self.greater_is_better:
             score = -score
 
         if self.verbose:
@@ -75,7 +76,7 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         self.X_train = X_train
         self.y_train = y_train
 
-        self.estimator = sklearn.base.clone(self.estimator)
+        self.estimator = clone(self.estimator)
 
         best_params = fmin(fn=self.__objective,
                            space=self.search_space,
