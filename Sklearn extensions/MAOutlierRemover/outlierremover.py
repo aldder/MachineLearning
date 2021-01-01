@@ -12,7 +12,7 @@ class MAOutlierRemover(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        X = pd.DataFrame(X)
+        X = pd.DataFrame(X).copy()
         for c in X.columns:
             serie = X[c].dropna()
             if len(serie) <= self.window:
