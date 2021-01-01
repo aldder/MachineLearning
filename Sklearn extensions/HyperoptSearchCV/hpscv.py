@@ -1,10 +1,11 @@
 from hyperopt import tpe, space_eval, Trials
-from hyperopt.fmin import fmin
 from numpy.random import RandomState
-import sklearn
 import matplotlib.pyplot as plt
+from hyperopt.fmin import fmin
+from time import time
 import pandas as pd
 import numpy as np
+import sklearn
 import joblib
 import os
 
@@ -71,6 +72,8 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         
         updated_model = self.estimator.set_params(**casted_params)
         
+        tic = time()
+        
         score = sklearn.model_selection.cross_val_score(
             updated_model,
             self.X_train,
@@ -79,11 +82,13 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
             cv=self.cv,
             n_jobs=self.n_jobs).mean()
         
+        toc = time()
+
         if self.greater_is_better:
             score = -score
-
+        
         if self.verbose:
-            print("{:.3f} - mean score on CV with params {}".format(score, recv_params))
+            print(f"{score:.3f} ({toc-tic:.2f}s) - mean score on CV with params {recv_params}")
 
         if score < self.best_score_:
             self.best_score_ = score
