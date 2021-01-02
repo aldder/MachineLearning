@@ -15,7 +15,7 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
     def __init__(self, estimator, search_space, param_types={},
                  n_iter=25, scoring='accuracy', cv=None,
                  verbose=1, seed=42, n_jobs=1, greater_is_better=False, 
-                 parser=None, trials_path=None):
+                 parser=None, trials_path=None, fit_params=None):
         """ Constructor for model to be optimized using hyperopt
 
         Keyword arguments:
@@ -48,6 +48,7 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         self.greater_is_better = greater_is_better
         self.parser = parser
         self.trials_path = trials_path
+        self.fit_params = fit_params
 
 
     def __cast_params(self, recv_params):
@@ -80,7 +81,8 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
             self.y_train,
             scoring=self.scoring,
             cv=self.cv,
-            n_jobs=self.n_jobs).mean()
+            n_jobs=self.n_jobs,
+            fit_params=self.fit_params).mean()
         
         toc = time()
 
