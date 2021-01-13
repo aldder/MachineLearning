@@ -102,28 +102,24 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         if self.best_score_ is None:
             self.best_score_ = float('inf')
 
-        if self.trials_path is not None and os.path.exists(self.trials_path):
-            self.trials_obj = joblib.load(self.trials_path)
-        else:
-            self.trials_obj = Trials()
-        
         self.X_train = X_train
         self.y_train = y_train
 
         self.estimator = sklearn.base.clone(self.estimator)
 
-        best_params = fmin(fn=self.__objective,
-                           space=self.search_space,
-                           algo=tpe.suggest,
-                           max_evals=self.n_iter,
-                           trials=self.trials_obj,
-                           rstate=RandomState(42))
-        evaluated = space_eval(self.search_space, best_params)
+        best_params = fmin(
+            fn=self.__objective,
+            space=self.search_space,
+            algo=tpe.suggest,
+            max_evals=self.n_iter,
+            trials_save_file=self.trials_path,
+            rstate=RandomState(42))
         
+        evaluated = space_eval(self.search_space, best_params)
         print('best params: ', evaluated)
         
-        joblib.dump(self.trials_obj, self.trials_path)
-        
+        self.trials_obj = joblib.load(self.trials_path)
+
         casted_best_params = self.__cast_params(evaluated)
         if self.parser:
             casted_best_params = self.parser(casted_best_params)
@@ -159,17 +155,33 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
             for k in trial['misc']['vals'].keys():
                 trials_df.loc[i, k] = trial['misc']['vals'][k][0] if len(trial['misc']['vals'][k]) > 0 else np.nan
 
-        for i,c in enumerate(trials_df.drop(['error'],1).columns):
-            fig, ax = plt.subplots(1,2, figsize=(8, 3))
-            ax[0].scatter(trials_df.index, trials_df[c], s=20, linewidth=0.01, alpha=0.75)
-            ax[0].set_title(f'{c} over trials')
-            ax[0].set_xlabel('trial')
-            ax[0].set_ylabel(c)
-            ax[1].scatter(trials_df[c], trials_df['error'], s=20, linewidth=0.01, alpha=0.75)
-            ax[1].set_title(f'error over {c}')
-            ax[1].set_xlabel(c)
-            ax[1].set_ylabel('error')
-            plt.tight_layout()
+        parameters = trials_df.drop(['error'],1).columns
+
+        plt.figure(figsize=(12,4*len(parameters)))
+        for i, c in enumerate(parameters):
+            plt.subplot(len(parameters), 2, i*2+1)
+            plt.scatter(trials_df.index, trials_df[c], s=20, linewidth=0.01, alpha=0.75)
+            plt.title(f'{c} over trials')
+            plt.xlabel('trial')
+            plt.ylabel(c)
+            plt.subplot(len(parameters), 2, i*2+2)
+            plt.scatter(trials_df[c], trials_df['error'], s=20, linewidth=0.01, alpha=0.75)
+            plt.title(f'error over {c}')
+            plt.xlabel(c)
+            plt.ylabel('error')
+        plt.tight_layout()
+
+        # for i,c in enumerate(parameters):
+        #     fig, ax = plt.subplots(1,2, figsize=(8, 3))
+        #     ax[0].scatter(trials_df.index, trials_df[c], s=20, linewidth=0.01, alpha=0.75)
+        #     ax[0].set_title(f'{c} over trials')
+        #     ax[0].set_xlabel('trial')
+        #     ax[0].set_ylabel(c)
+        #     ax[1].scatter(trials_df[c], trials_df['error'], s=20, linewidth=0.01, alpha=0.75)
+        #     ax[1].set_title(f'error over {c}')
+        #     ax[1].set_xlabel(c)
+        #     ax[1].set_ylabel('error')
+        #     plt.tight_layout()
             # plt.show()
 
         trial_seq = []
@@ -177,7 +189,7 @@ class HyperoptSearchCV(sklearn.base.BaseEstimator):
         for trial in valid_trials:
             trial_seq.append(trial['tid'])
             err_seq.append(trial['result']['loss'])
-        plt.figure(figsize=(9,3))
+        plt.figure(figsize=(15,4))
         plt.plot(trial_seq, err_seq)
         plt.scatter(np.argmin(err_seq), min(err_seq), c='r')
         plt.title('error over trials')
